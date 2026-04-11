@@ -17,7 +17,7 @@ class Game
     private ?Uuid $id = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $status = null;
+    private ?string $status = 'waiting'; // waiting, playing, finished
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $currentSongId = null;
