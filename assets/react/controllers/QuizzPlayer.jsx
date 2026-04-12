@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-export default function QuizPlayer({ gameId, mercureUrl }) {
+export default function QuizzPlayer({ gameId, mercureUrl }) {
   const [status, setStatus] = useState("waiting");
   const [guess, setGuess] = useState("");
 

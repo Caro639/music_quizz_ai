@@ -4,7 +4,7 @@ namespace App\Service;
 
 use OpenAI\Client;
 
-class AiValidator
+class AIValidator
 {
     public function __construct(private Client $client)
     {

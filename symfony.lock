@@ -35,16 +35,16 @@
             "./migrations/.gitignore"
         ]
     },
-    "php-http/discovery": {
-        "version": "1.20",
+    "nyholm/psr7": {
+        "version": "1.8",
         "recipe": {
             "repo": "github.com/symfony/recipes",
             "branch": "main",
-            "version": "1.18",
-            "ref": "f45b5dd173a27873ab19f5e3180b2f661c21de02"
+            "version": "1.0",
+            "ref": "4a8c0345442dcca1d8a2c65633dcf0285dd5a5a2"
         },
         "files": [
-            "./config/packages/http_discovery.yaml"
+            "./config/packages/nyholm_psr7.yaml"
         ]
     },
     "phpunit/phpunit": {
@@ -362,6 +362,22 @@
         },
         "files": [
             "./config/packages/messenger.yaml"
+        ]
+    },
+    "symfony/webpack-encore-bundle": {
+        "version": "2.4",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "2.1",
+            "ref": "b346dae458e64a1921ded2125993d94bd719a8dd"
+        },
+        "files": [
+            "./assets/app.js",
+            "./assets/styles/app.css",
+            "./config/packages/webpack_encore.yaml",
+            "./package.json",
+            "./webpack.config.js"
         ]
     },
     "twig/extra-bundle": {

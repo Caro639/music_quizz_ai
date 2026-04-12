@@ -27,6 +27,7 @@ return [
     ],
     'react' => [
         'version' => '18.3.1',
+        // 'url' => 'https://ga.jspm.io/npm:react@18.3.1/index.js',
     ],
     'react-dom/client' => [
         'version' => '18.3.1',

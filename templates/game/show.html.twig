@@ -1,0 +1,17 @@
+{# templates/game/show.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Blind Test Music - Partie {{ game.token }}{% endblock %}
+
+{% block body %}
+<div class="container mx-auto mt-10 p-5">
+    <h1 class="text-3xl font-bold mb-5">Salon : {{ game.token }}</h1>
+
+    {# On appelle le composant React et on lui passe l'ID de la partie #}
+    <div {{ react_component('QuizzLobby', { 'gameId': game.id,
+    'token': game.token,
+    'mercureUrl': mercureUrl }) }}>
+        Chargement du jeu...
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Controller;
+
+use App\Entity\Game;
+use App\Service\MistralAiService;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mercure\HubInterface;
+use Symfony\Component\Mercure\Update;
+use Symfony\Component\Routing\Attribute\Route;
+
+final class GameController extends AbstractController
+{
+    #[Route('/game/create', name: 'app_game_create')]
+    public function create(EntityManagerInterface $manager): Response
+    {
+        $game = new Game();
+
+        // On génère un token court de 6 caractères pour le partage
+        $token = bin2hex(random_bytes(3));
+
+        $game->setToken(strtoupper($token));
+        $game->setStatus('waiting');
+        $game->setScores([]);
+        $game->setAnswers([]);
+
+        $manager->persist($game);
+        $manager->flush();
+
+        return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
+    }
+
+    #[Route('/game/{id}', name: 'app_game_show')]
+    public function show(Game $game): Response
+    {
+        $topicUrl = "https://quiz-ia.com/game/{$game->getId()}";
+
+        return $this->render('game/show.html.twig', [
+            'game' => $game,
+            'mercureUrl' => $topicUrl,
+        ]);
+    }
+
+    #[Route('/api/game/{id}/start', name: 'api_game_start', methods: ['POST'])]
+    public function start(
+        Game $game,
+        MistralAiService $ai,
+        EntityManagerInterface $manager,
+        HubInterface $hub
+    ): JsonResponse {
+
+        $playlist = $ai->generateQuiz('Années 90 Françaises');
+
+        $game->setStatus('playing');
+        $game->setAnswers($playlist);
+
+        $manager->flush();
+
+        // --- LE PUSH MERCURE ---
+        // On crée une mise à jour liée à l'ID de cette partie
+        $update = new Update(
+            "https://quiz-ia.com/game/{$game->getId()}", // Le "Topic" (l'ID unique)
+            json_encode([
+                'status' => 'playing',
+                'playlist' => $playlist,
+                'message' => 'L\'IA a généré le quiz !'
+            ])
+        );
+
+        $hub->publish($update);
+
+        return $this->json([
+            'message' => 'Le quiz a été généré par Mistral !',
+            'playlist' => $playlist,
+            'status' => 'success'
+        ]);
+    }
+}
