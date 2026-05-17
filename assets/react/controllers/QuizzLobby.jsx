@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
+import QuizzPlayer from "./QuizzPlayer";
 
-export default function QuizzLobby({ gameId, mercureUrl, token }) {
+export default function QuizzLobby({
+  gameId,
+  mercureUrl,
+  mercureHubUrl,
+  token,
+}) {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState("waiting");
   const [playlist, setPlaylist] = useState([]);
+  const [currentSongIndex, setCurrentSongIndex] = useState(0);
+  const [scores, setScores] = useState({}); // { "PlayerName": 5, ... }
 
   useEffect(() => {
-    // On s'abonne aux annonces de Symfony pour CETTE partie
-
-    const hubUrl = new URL("/.well-known/mercure", window.location.origin);
+    const hubUrl = new URL(mercureHubUrl);
     hubUrl.searchParams.append("topic", mercureUrl);
     const eventSource = new EventSource(hubUrl);
 
@@ -16,28 +22,44 @@ export default function QuizzLobby({ gameId, mercureUrl, token }) {
       const data = JSON.parse(event.data);
       console.log("Annonce reçue de Symfony :", data);
 
+      // Le jeu démarre : tous les joueurs reçoivent la playlist
       if (data.status === "playing") {
-        if (data.playlist) setPlaylist(data.playlist); // Les autres joueurs reçoivent la playlist via Mercure
+        if (data.playlist) setPlaylist(data.playlist);
+        setCurrentSongIndex(0);
         setStatus("playing");
+      }
+
+      // Symfony dit de passer à la chanson suivante
+      if (data.type === "next_song") {
+        setCurrentSongIndex(data.currentSongIndex);
+      }
+
+      // Symfony met à jour les scores de tous les joueurs
+      if (data.type === "score_update") {
+        setScores(data.scores);
+      }
+
+      // Fin de partie
+      if (data.type === "game_over") {
+        setStatus("finished");
+        setScores(data.scores);
       }
     };
 
     eventSource.onerror = () => console.error("Connexion Mercure perdue.");
-
-    return () => eventSource.close(); // On ferme la connexion si on quitte la page
+    return () => eventSource.close();
   }, [mercureUrl]);
 
   const handleStartGame = async () => {
-    setIsLoading(true); // On lance l'animation de chargement
-
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/game/${gameId}/start`, {
         method: "POST",
       });
-
       if (response.ok) {
         const data = await response.json();
         setPlaylist(data.playlist); // L'hôte reçoit la playlist via le fetch
+        setCurrentSongIndex(0);
         setStatus("playing");
       }
     } catch (error) {
@@ -47,20 +69,39 @@ export default function QuizzLobby({ gameId, mercureUrl, token }) {
     }
   };
 
+  // --- Écran de jeu ---
   if (status === "playing") {
     return (
-      <div className='glass-card animate-fade-in'>
-        <h2 className='text-neon'>🎶 Le Quiz commence ! 🎶</h2>
-        {/* TODO: passer playlist au composant QuizPlayer */}
-        <pre className='text-xs'>{JSON.stringify(playlist, null, 2)}</pre>
+      <QuizzPlayer
+        gameId={gameId}
+        playlist={playlist}
+        currentSongIndex={currentSongIndex}
+        scores={scores}
+      />
+    );
+  }
+
+  // --- Écran de fin ---
+  if (status === "finished") {
+    const sortedScores = Object.entries(scores).sort(([, a], [, b]) => b - a);
+    return (
+      <div className='glass-card text-center animate-fade-in'>
+        <h2 className='text-neon text-3xl mb-6'>🏆 Résultats finaux</h2>
+        <ol className='text-left mb-6'>
+          {sortedScores.map(([player, score], i) => (
+            <li key={player} className='mb-2 text-lg'>
+              {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"} {player} — {score} pts
+            </li>
+          ))}
+        </ol>
       </div>
     );
   }
 
+  // --- Salon d'attente ---
   return (
     <div className='glass-card text-center'>
       <h2 className='mb-4 text-2xl font-bold'>Code du salon : {token}</h2>
-
       {isLoading ? (
         <div className='loading-container'>
           <div className='spinner'></div>
@@ -74,7 +115,7 @@ export default function QuizzLobby({ gameId, mercureUrl, token }) {
             onClick={handleStartGame}
             disabled={status === "playing"}
           >
-            {status === "playing" ? "Jeu lancé !" : "Générer le quiz avec l'IA"}
+            Générer le quiz avec l'IA
           </button>
         </>
       )}

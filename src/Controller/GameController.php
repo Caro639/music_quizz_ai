@@ -41,6 +41,7 @@ final class GameController extends AbstractController
         return $this->render('game/show.html.twig', [
             'game' => $game,
             'mercureUrl' => $topicUrl,
+            'mercureHubUrl' => getenv('MERCURE_PUBLIC_URL') ?: 'https://localhost:3000/.well-known/mercure',
         ]);
     }
 

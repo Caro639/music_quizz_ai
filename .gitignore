@@ -27,6 +27,15 @@
 .DS_Store
 Thumbs.db
 
+# Mercure Hub (binaire téléchargé)
+/bin
+/bin/mercure/mercure.exe
+/bin/mercure/mercure.crt
+/bin/mercure/mercure.csr
+/bin/mercure/mercure.key
+/bin/mercure/localhost.cnf
+/bin/mercure/*.srl
+
 # Base de données locale
 *.db
 *.sqlite

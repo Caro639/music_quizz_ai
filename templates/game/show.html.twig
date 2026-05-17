@@ -10,7 +10,8 @@
     {# On appelle le composant React et on lui passe l'ID de la partie #}
     <div {{ react_component('QuizzLobby', { 'gameId': game.id,
     'token': game.token,
-    'mercureUrl': mercureUrl }) }}>
+    'mercureUrl': mercureUrl,
+    'mercureHubUrl': mercureHubUrl }) }}>
         Chargement du jeu...
     </div>
 </div>
