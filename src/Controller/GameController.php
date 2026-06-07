@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
 use Symfony\Component\Routing\Attribute\Route;
+use App\Service\DeezerService;
 
 final class GameController extends AbstractController
 {
@@ -50,13 +51,27 @@ final class GameController extends AbstractController
         Game $game,
         MistralAiService $ai,
         EntityManagerInterface $manager,
-        HubInterface $hub
+        HubInterface $hub,
+        DeezerService $deezer,
     ): JsonResponse {
 
-        $playlist = $ai->generateQuiz('Années 90 Françaises');
+        $playlist = $ai->generateQuiz('Années 2000 rap français');
+        // $playlist = $ai->generateQuiz('Années 90 Françaises');
+
+        //
+        $finalPlaylist = [];
+        foreach ($playlist as $track) {
+            $previewUrl = $deezer->getPreviewUrl($track['title'], $track['artist']);
+
+            $finalPlaylist[] = [
+                'title' => $track['title'],
+                'artist' => $track['artist'],
+                'preview_url' => $previewUrl // On ajoute le MP3 !
+            ];
+        }
 
         $game->setStatus('playing');
-        $game->setAnswers($playlist);
+        $game->setAnswers($finalPlaylist);
 
         $manager->flush();
 
@@ -66,7 +81,7 @@ final class GameController extends AbstractController
             "https://quiz-ia.com/game/{$game->getId()}", // Le "Topic" (l'ID unique)
             json_encode([
                 'status' => 'playing',
-                'playlist' => $playlist,
+                'playlist' => $finalPlaylist,
                 'message' => 'L\'IA a généré le quiz !'
             ])
         );
@@ -75,7 +90,7 @@ final class GameController extends AbstractController
 
         return $this->json([
             'message' => 'Le quiz a été généré par Mistral !',
-            'playlist' => $playlist,
+            'playlist' => $finalPlaylist,
             'status' => 'success'
         ]);
     }

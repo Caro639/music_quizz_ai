@@ -98,6 +98,24 @@ export default function QuizzPlayer({
         </div>
       </div>
 
+      {/* Lecteur audio Deezer */}
+      <div className='text-center mb-6'>
+        {currentSong.preview_url ? (
+          <>
+            <audio
+              //   ref={audioRef}
+              src={currentSong.preview_url}
+              autoPlay
+              //   onEnded={() => setIsPlaying(false)}
+            />
+          </>
+        ) : (
+          <p className='text-gray-500 italic'>
+            Pas d'extrait disponible pour cette chanson.
+          </p>
+        )}
+      </div>
+
       {/* Question */}
       <div className='text-center mb-6'>
         <p className='text-3xl mb-2'>🎵</p>
