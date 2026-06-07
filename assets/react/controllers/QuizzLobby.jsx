@@ -13,6 +13,8 @@ export default function QuizzLobby({
   const [currentSongIndex, setCurrentSongIndex] = useState(0);
   const [scores, setScores] = useState({}); // { "PlayerName": 5, ... }
 
+  const [timeLeft, setTimeLeft] = useState(30);
+
   useEffect(() => {
     const hubUrl = new URL(mercureHubUrl);
     hubUrl.searchParams.append("topic", mercureUrl);
@@ -27,6 +29,7 @@ export default function QuizzLobby({
         if (data.playlist) setPlaylist(data.playlist);
         setCurrentSongIndex(0);
         setStatus("playing");
+        setTimeLeft(30);
       }
 
       // Symfony dit de passer à la chanson suivante
@@ -49,6 +52,43 @@ export default function QuizzLobby({
     eventSource.onerror = () => console.error("Connexion Mercure perdue.");
     return () => eventSource.close();
   }, [mercureUrl]);
+
+  // compte à rebours
+  useEffect(() => {
+    if (status !== "playing" || playlist.length === 0) return;
+
+    if (timeLeft === 0) {
+      handleTimeOut();
+      return;
+    }
+
+    // Décompte toutes les secondes
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => clearInterval(timer); // Nettoyage de l'intervalle
+  }, [timeLeft, status, playlist]);
+
+  // Action lorsque le temps est écoulé
+  const handleTimeOut = () => {
+    alert("Temps écoulé pour cette chanson !");
+    // Empêcher les réponses tardives
+    // setTimeLeft(0);
+    // Passer à la chanson suivante
+    // setCurrentSongIndex((prev) => prev + 1);
+
+    goToNextQuestion();
+  };
+
+  const goToNextQuestion = () => {
+    if (currentSongIndex < playlist.length - 1) {
+      setCurrentSongIndex((prev) => prev + 1);
+      setTimeLeft(30); // Réinitialiser le temps pour la prochaine question
+    } else {
+      setStatus("finished");
+    }
+  };
 
   const handleStartGame = async () => {
     setIsLoading(true);
