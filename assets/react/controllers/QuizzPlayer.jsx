@@ -17,6 +17,7 @@ export default function QuizzPlayer({
   playlist,
   currentSongIndex,
   scores,
+  timeLeft,
 }) {
   const [guess, setGuess] = useState("");
   const [answered, setAnswered] = useState(false); // empêche de répondre deux fois
@@ -83,13 +84,26 @@ export default function QuizzPlayer({
     ([, a], [, b]) => b - a,
   );
 
+  const barWidth = (timeLeft / 30) * 100;
+
   return (
     <div className='glass-card animate-fade-in'>
+      {/* Barre de temps écoulé */}
+      <div className='timer-bar-container'>
+        <div className='timer-bar' style={{ width: `${barWidth}%` }}></div>
+      </div>
+
       {/* Progression */}
       <div className='mb-4'>
         <p className='text-sm text-gray-400 mb-1'>
           Question {currentSongIndex + 1} / {totalSongs}
         </p>
+        <span
+          className='timer-text'
+          style={{ color: timeLeft <= 5 ? "#ff4a4a" : "#00d2ff" }}
+        >
+          ⏱️ {timeLeft}s
+        </span>
         <div className='w-full bg-gray-700 rounded-full h-2'>
           <div
             className='bg-purple-500 h-2 rounded-full transition-all duration-500'
@@ -102,7 +116,11 @@ export default function QuizzPlayer({
       <div className='text-center mb-6'>
         {currentSong.preview_url ? (
           <>
-            <audio src={currentSong.preview_url} autoPlay />
+            <audio
+              src={currentSong.preview_url}
+              autoPlay
+              key={currentSongIndex}
+            />
           </>
         ) : (
           <p className='text-gray-500 italic'>

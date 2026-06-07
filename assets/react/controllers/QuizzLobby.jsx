@@ -72,7 +72,7 @@ export default function QuizzLobby({
 
   // Action lorsque le temps est écoulé
   const handleTimeOut = () => {
-    alert("Temps écoulé pour cette chanson !");
+    // alert("Temps écoulé pour cette chanson !");
     // Empêcher les réponses tardives
     // setTimeLeft(0);
     // Passer à la chanson suivante
@@ -101,6 +101,7 @@ export default function QuizzLobby({
         setPlaylist(data.playlist); // L'hôte reçoit la playlist via le fetch
         setCurrentSongIndex(0);
         setStatus("playing");
+        setTimeLeft(30);
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à Mistral :", error);
@@ -117,6 +118,7 @@ export default function QuizzLobby({
         playlist={playlist}
         currentSongIndex={currentSongIndex}
         scores={scores}
+        timeLeft={timeLeft}
       />
     );
   }
