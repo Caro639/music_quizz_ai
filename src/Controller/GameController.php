@@ -55,10 +55,8 @@ final class GameController extends AbstractController
         DeezerService $deezer,
     ): JsonResponse {
 
-        $playlist = $ai->generateQuiz('Années 2000 rap français');
-        // $playlist = $ai->generateQuiz('Années 90 Françaises');
+        $playlist = $ai->generateQuiz('Années 80 Françaises');
 
-        //
         $finalPlaylist = [];
         foreach ($playlist as $track) {
             $previewUrl = $deezer->getPreviewUrl($track['title'], $track['artist']);

@@ -102,12 +102,7 @@ export default function QuizzPlayer({
       <div className='text-center mb-6'>
         {currentSong.preview_url ? (
           <>
-            <audio
-              //   ref={audioRef}
-              src={currentSong.preview_url}
-              autoPlay
-              //   onEnded={() => setIsPlaying(false)}
-            />
+            <audio src={currentSong.preview_url} autoPlay />
           </>
         ) : (
           <p className='text-gray-500 italic'>
@@ -115,6 +110,9 @@ export default function QuizzPlayer({
           </p>
         )}
       </div>
+
+      {/* Notre magnifique Vinyle animé ! */}
+      <div className='vinyl-container'>💿</div>
 
       {/* Question */}
       <div className='text-center mb-6'>

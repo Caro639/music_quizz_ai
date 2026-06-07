@@ -52,3 +52,46 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* Le vinyle stylisé */
+.vinyl-container {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0d0d0d 30%,
+    #1a1a1a 40%,
+    #050505 50%,
+    #222 60%,
+    #000 70%
+  );
+  border: 4px solid #00d2ff;
+  box-shadow:
+    0 0 20px rgba(0, 210, 255, 0.5),
+    inset 0 0 10px #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto;
+  font-size: 3rem;
+
+  /* On applique la rotation */
+  animation: spin 3s linear infinite;
+}
+
+/* La barre de progression visuelle du Timer */
+/* .timer-bar-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #00d2ff, #00ffaa);
+    transition: width 1s linear;
+} */
