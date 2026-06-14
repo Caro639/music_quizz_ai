@@ -6,12 +6,18 @@ export default function QuizzLobby({
   mercureUrl,
   mercureHubUrl,
   token,
+  initialSongIndex = 0,
+  initialScores = {},
+  isHost,
+  initialStatus = "waiting",
+  playerId = null,
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState("waiting");
+  const [status, setStatus] = useState(initialStatus);
   const [playlist, setPlaylist] = useState([]);
-  const [currentSongIndex, setCurrentSongIndex] = useState(0);
-  const [scores, setScores] = useState({}); // { "PlayerName": 5, ... }
+  const [currentSongIndex, setCurrentSongIndex] = useState(initialSongIndex);
+  const [scores, setScores] = useState(initialScores); // { "PlayerName": 5, ... }
+  const [players, setPlayers] = useState([]); // { "PlayerName": true, ... }
 
   const [timeLeft, setTimeLeft] = useState(30);
 
@@ -40,6 +46,11 @@ export default function QuizzLobby({
       // Symfony met à jour les scores de tous les joueurs
       if (data.type === "score_update") {
         setScores(data.scores);
+      }
+
+      // Symfony met à jour la liste des joueurs
+      if (data.type === "player_update") {
+        setPlayers((prev) => [...prev, data.nickname]);
       }
 
       // Fin de partie
@@ -144,6 +155,35 @@ export default function QuizzLobby({
   return (
     <div className='glass-card text-center'>
       <h2 className='mb-4 text-2xl font-bold'>Code du salon : {token}</h2>
+
+      <div className='players-lobby mb-6'>
+        <h3>Joueurs connectés ({players.length}) :</h3>
+        {players.length === 0 ? (
+          <p className='text-muted'>
+            En attente de joueurs... Sortez vos téléphones !
+          </p>
+        ) : (
+          <div className='players-grid'>
+            {players.map((player, index) => (
+              <span key={index} className='player-badge animate-pop'>
+                👤 {player}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Seul l'hôte devrait voir ce bouton */}
+      {/* {isHost && (
+        <button
+          className='btn-neon'
+          onClick={handleStartGame}
+          disabled={isLoading}
+        >
+          {isLoading ? "Génération..." : "Tout le monde est là ? Lancer !"}
+        </button>
+      )} */}
+
       {isLoading ? (
         <div className='loading-container'>
           <div className='spinner'></div>

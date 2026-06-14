@@ -26,12 +26,14 @@ export default function QuizzPlayer({
   const [playerName] = useState(
     () => sessionStorage.getItem("playerName") ?? "Joueur",
   );
+  const [feedback, setFeedback] = useState(null);
 
   // Réinitialiser la saisie à chaque nouvelle chanson
   useEffect(() => {
     setGuess("");
     setAnswered(false);
     setResult(null);
+    setFeedback(null);
   }, [currentSongIndex]);
 
   const currentSong = playlist[currentSongIndex];
@@ -69,7 +71,7 @@ export default function QuizzPlayer({
 
       if (response.ok) {
         const data = await response.json();
-        setResult(data.correct ? "correct" : "incorrect");
+        setResult(data.isCorrect ? "correct" : "incorrect");
         setAnswered(true);
       }
     } catch (error) {
@@ -161,7 +163,8 @@ export default function QuizzPlayer({
       ) : (
         /* Feedback après réponse */
         <div
-          className={`text-center p-4 rounded mb-6 ${result === "correct" ? "bg-green-800" : "bg-red-900"}`}
+          //   className={`text-center p-4 rounded mb-6 ${result === "correct" ? "bg-green-800" : "bg-red-900"}`}
+          className={`feedback-box ${result === "correct" ? "success" : "error"}`}
         >
           {result === "correct" ? (
             <p className='text-xl'>✅ Bonne réponse ! +1 point</p>

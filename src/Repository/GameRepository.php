@@ -16,6 +16,24 @@ class GameRepository extends ServiceEntityRepository
         parent::__construct($registry, Game::class);
     }
 
+    public function findOneByToken(string $token): ?Game
+    {
+        return $this->findOneBy(['token' => strtoupper($token)]);
+    }
+
+    /** @return Game[] */
+    public function findWaitingGames(): array
+    {
+        return $this->createQueryBuilder('g')
+            ->where('g.status = :status')
+            ->setParameter('status', 'waiting')
+            ->orderBy('g.id', 'DESC')
+            ->setMaxResults(10)
+            ->getQuery()
+            ->getResult();
+    }
+
+
     //    /**
     //     * @return Game[] Returns an array of Game objects
     //     */
