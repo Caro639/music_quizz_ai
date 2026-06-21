@@ -8,11 +8,15 @@
     <h1 class="text-3xl font-bold mb-5">Salon : {{ game.token }}</h1>
 
     {# On appelle le composant React et on lui passe l'ID de la partie #}
-    <div {{ react_component('QuizzLobby', { 'gameId': game.id,
+    <div {{ react_component('QuizzLobby', {
+    'gameId': game.id,
     'token': game.token,
     'mercureUrl': mercureUrl,
     'isHost': isHost,
-    'mercureHubUrl': mercureHubUrl }) }}>
+    'currentPlayerId': app.session.get('player_id'),
+    'playerId': game.players|map(p => p.id)|join(','),
+    'mercureHubUrl': mercureHubUrl,
+     }) }}>
         Chargement du jeu...
     </div>
 </div>

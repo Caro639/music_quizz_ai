@@ -16,6 +16,8 @@ use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Mercure\Update;
 use Symfony\Component\Routing\Attribute\Route;
 
+use Psr\Log\LoggerInterface;
+
 final class GameController extends AbstractController
 {
 
@@ -54,7 +56,7 @@ final class GameController extends AbstractController
         $manager->persist($player);
         $manager->flush();
 
-        // 💡 IMPORTANT : On stocke l'ID du joueur en session pour que le téléphone s'en souvienne
+        // IMPORTANT : On stocke l'ID du joueur en session
         $request->getSession()->set('player_id', $player->getId());
 
         $update = new Update(
@@ -65,7 +67,7 @@ final class GameController extends AbstractController
             ])
         );
         $hub->publish($update);
-        // On le redirige vers la page du salon
+        // On le redirige vers la page du salon de cette partie
         return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
 
     }
@@ -73,7 +75,6 @@ final class GameController extends AbstractController
     #[Route('/game/create', name: 'app_game_create')]
     public function create(Request $request, EntityManagerInterface $manager): Response
     {
-        $nickname = (string) $request->request->get('nickname', 'Hôte');
 
         $game = new Game();
 
@@ -82,14 +83,14 @@ final class GameController extends AbstractController
 
         $game->setToken(strtoupper($token));
         $game->setStatus('waiting');
-        $game->setScores([]);
+        // $game->setScores([]);
         $game->setAnswers([]);
 
         $manager->persist($game);
 
         // 2. Création du joueur Hôte
         $player = new Player();
-        $player->setNickname($nickname);
+        $player->setNickname($player->getNickname() ?: 'Hôte');
         $player->setGame($game);
         $player->setScore(0);
         $manager->persist($player);
@@ -107,11 +108,15 @@ final class GameController extends AbstractController
     {
         $topicUrl = "https://quiz-ia.com/game/{$game->getId()}";
 
+        $isHost = $request->getSession()->get('host_game_id') === (string) $game->getId();
+
         $playerId = $request->getSession()->get('player_id');
 
         return $this->render('game/show.html.twig', [
             'game' => $game,
-            'isHost' => ($playerId === null), // S'il n'a pas d'ID joueur en session, c'est l'hôte sur son PC !
+            // 'playerHost' => ($playerId === null), // S'il n'a pas d'ID joueur en session, c'est l'hôte sur son PC !
+            'isHost' => $isHost,
+            'playerId' => $playerId,
             'mercureUrl' => $topicUrl,
             'mercureHubUrl' => getenv('MERCURE_PUBLIC_URL') ?: 'https://localhost:3000/.well-known/mercure',
         ]);
@@ -141,6 +146,7 @@ final class GameController extends AbstractController
 
         $game->setStatus('playing');
         $game->setAnswers($finalPlaylist);
+
 
         $manager->flush();
 
@@ -172,16 +178,33 @@ final class GameController extends AbstractController
         MistralAiService $ai,
         EntityManagerInterface $em,
         HubInterface $hub,
+        LoggerInterface $logger
     ): JsonResponse {
 
-        $session = $request->getSession();
-        $scores = $session->get('quiz_score', 0);
-
         $body = json_decode($request->getContent(), true);
+
+        $logger->info('Received guess request', [
+            'body' => $body,
+            'gameId' => $game->getId(),
+            'playerId' => $body['playerId'] ?? null,
+            'songIndex' => $body['songIndex'] ?? null,
+            'answer' => $body['answer'] ?? null
+        ]);
+
         $songIndex = (int) ($body['songIndex'] ?? 0);
         $answer = trim($body['answer'] ?? '');
-        $playerName = trim($body['playerName'] ?? 'Joueur');
 
+        // trouver qui répond en session (player_id)
+        $playerId = $request->getSession()->get('player_id');
+
+        $player = $em->getRepository(Player::class)->find($playerId);
+
+        if (!$player || $player->getGame() !== $game) {
+            $logger->error('JOUEUR INTROUVABLE EN BDD !', ['playerId' => $playerId, 'gameId' => $game->getId()]);
+            return $this->json(['error' => 'Joueur non autorisé ou introuvable'], 403);
+        }
+
+        // recuperer la reponse
         $songs = $game->getAnswers();
 
         if (!isset($songs[$songIndex])) {
@@ -193,38 +216,41 @@ final class GameController extends AbstractController
         // 1. Validation via Mistral
         $isCorrect = $ai->validateAnswer($answer, $song['title'], $song['artist']);
 
+        $logger->info('Validation result', ['isCorrect' => $isCorrect, 'playerId' => $playerId, 'gameId' => $game->getId(), 'songIndex' => $songIndex]);
+
         if ($isCorrect) {
-            $scores++;
-            $session->set('quiz_score', $scores);
-        }
+
+            // On augmente le score du joueur de 10 points
+            $player->setScore($player->getScore() + 10);
+
+            $logger->info('Score updated', ['player' => $player->getNickname(), 'nouveau_score' => $player->getScore()]);
 
 
-        // 2. Mettre à jour le score du joueur
-        $scores = $game->getScores();
-        if (!isset($scores[$playerName])) {
-            $scores[$playerName] = 0;
+            $em->flush();
         }
-        if ($isCorrect) {
-            $scores[$playerName]++;
-        }
-        $game->setScores($scores);
 
+        // $game->setScores($scores);
+
+        $scores = [];
+
+        foreach ($game->getPlayers() as $p) {
+            $scores[$p->getNickname()] = $p->getScore();
+        }
         $topic = "https://quiz-ia.com/game/{$game->getId()}";
 
-        // Broadcast score_update
+        // Broadcast score_update sans changer de chanson
         $hub->publish(new Update($topic, json_encode([
             'type' => 'score_update',
             'scores' => $scores,
         ])));
 
+        $logger->info('Broadcasting update', ['topic' => $topic, 'scores' => $scores]);
 
         $em->flush();
 
         return $this->json([
             'isCorrect' => $isCorrect,
-            'currentScore' => $scores[$playerName],
-            // 'points' => $pointsGagnes,
-            // 'correctAnswer' => "$correctTitle - $correctArtist"
+            'scores' => $scores,
         ]);
     }
 }

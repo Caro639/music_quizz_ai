@@ -31,7 +31,9 @@ class MistralAiService
                     ],
                     [
                         'role' => 'user',
-                        'content' => "Génère 5 chansons pour un quiz sur le thème '$theme'. Format: {\"songs\": [{\"title\": \"...\", \"artist\": \"...\"}]}"
+                        'content' => "Génère 5 chansons pour un quiz sur le thème '$theme'.
+                        Peux-tu faire attention à ne pas proposer de chansons répétitives ou similaires ?
+                        Format: {\"songs\": [{\"title\": \"...\", \"artist\": \"...\"}]}"
                     ]
                 ],
                 'response_format' => ['type' => 'json_object']

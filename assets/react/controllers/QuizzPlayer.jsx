@@ -11,6 +11,8 @@ import React, { useState, useEffect } from "react";
  *   - playlist        : tableau de chansons [{ title, artist }, ...]
  *   - currentSongIndex: index de la chanson en cours (géré par Mercure via QuizzLobby)
  *   - scores          : { "NomJoueur": points, ... } — mis à jour par Mercure
+ *  - timeLeft        : temps restant pour répondre (mis à jour par QuizzLobby)
+ * - playerId        : identifiant unique du joueur — pour identifier le joueur dans la BDD
  */
 export default function QuizzPlayer({
   gameId,
@@ -18,14 +20,20 @@ export default function QuizzPlayer({
   currentSongIndex,
   scores,
   timeLeft,
+  playerId,
 }) {
   const [guess, setGuess] = useState("");
   const [answered, setAnswered] = useState(false); // empêche de répondre deux fois
   const [result, setResult] = useState(null); // "correct" | "incorrect" | null
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [playerName] = useState(
-    () => sessionStorage.getItem("playerName") ?? "Joueur",
-  );
+  //      session Storage pour récupérer le pseudo du joueur
+  //   const [playerName] = useState(
+  //     () => sessionStorage.getItem("playerName") ?? "Joueur",
+  //   );
+  //   les joueurs déjà présents dans la BDD (ex: l'hôte)
+  const [players, setPlayers] = useState(playerId ? [playerId] : []);
+
+  const [isPlaying, setIsPlaying] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   // Réinitialiser la saisie à chaque nouvelle chanson
@@ -34,6 +42,7 @@ export default function QuizzPlayer({
     setAnswered(false);
     setResult(null);
     setFeedback(null);
+    setIsPlaying(false);
   }, [currentSongIndex]);
 
   const currentSong = playlist[currentSongIndex];
@@ -56,7 +65,7 @@ export default function QuizzPlayer({
     setIsSubmitting(true);
     try {
       // --- ÉTAPE 2 : cette route Symfony n'existe pas encore ---
-      // Elle recevra { songIndex, answer, playerName }
+      // Elle recevra { songIndex, answer, playerId } et vérifiera la réponse via Mistral AI
       // Elle répondra { correct: true/false }
       // Elle broadcastera via Mercure : next_song + score_update
       const response = await fetch(`/api/game/${gameId}/guess`, {
@@ -65,7 +74,8 @@ export default function QuizzPlayer({
         body: JSON.stringify({
           songIndex: currentSongIndex,
           answer: guess.trim(),
-          playerName,
+          //   playerName,
+          playerId,
         }),
       });
 
@@ -131,7 +141,7 @@ export default function QuizzPlayer({
         )}
       </div>
 
-      {/* Notre magnifique Vinyle animé ! */}
+      {/* vinyle animé */}
       <div className='vinyl-container'>💿</div>
 
       {/* Question */}

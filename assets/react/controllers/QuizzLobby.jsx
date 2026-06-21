@@ -10,14 +10,20 @@ export default function QuizzLobby({
   initialScores = {},
   isHost,
   initialStatus = "waiting",
-  playerId = null,
+  initialPlaylist = [],
+  playerId,
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState(initialStatus);
-  const [playlist, setPlaylist] = useState([]);
+  //   const [status, setStatus] = useState(initialStatus);
+  const [status, setStatus] = useState(
+    initialStatus === "playing" ? "playing" : initialStatus,
+  );
+
+  const [playlist, setPlaylist] = useState(initialPlaylist);
   const [currentSongIndex, setCurrentSongIndex] = useState(initialSongIndex);
   const [scores, setScores] = useState(initialScores); // { "PlayerName": 5, ... }
-  const [players, setPlayers] = useState([]); // { "PlayerName": true, ... }
+  //   const [players, setPlayers] = useState([]); // { "PlayerName": true, ... }
+  const [players, setPlayers] = useState(playerId ? [playerId] : []); // Liste des pseudos des joueurs
 
   const [timeLeft, setTimeLeft] = useState(30);
 
@@ -85,7 +91,7 @@ export default function QuizzLobby({
   const handleTimeOut = () => {
     // alert("Temps écoulé pour cette chanson !");
     // Empêcher les réponses tardives
-    // setTimeLeft(0);
+    setTimeLeft(0);
     // Passer à la chanson suivante
     // setCurrentSongIndex((prev) => prev + 1);
 
@@ -130,6 +136,7 @@ export default function QuizzLobby({
         currentSongIndex={currentSongIndex}
         scores={scores}
         timeLeft={timeLeft}
+        playerId={playerId}
       />
     );
   }
@@ -173,17 +180,6 @@ export default function QuizzLobby({
         )}
       </div>
 
-      {/* Seul l'hôte devrait voir ce bouton */}
-      {/* {isHost && (
-        <button
-          className='btn-neon'
-          onClick={handleStartGame}
-          disabled={isLoading}
-        >
-          {isLoading ? "Génération..." : "Tout le monde est là ? Lancer !"}
-        </button>
-      )} */}
-
       {isLoading ? (
         <div className='loading-container'>
           <div className='spinner'></div>
@@ -192,13 +188,16 @@ export default function QuizzLobby({
       ) : (
         <>
           <p className='mb-6'>Prêt à tester ta culture musicale ?</p>
-          <button
-            className='btn-neon'
-            onClick={handleStartGame}
-            disabled={status === "playing"}
-          >
-            Générer le quiz avec l'IA
-          </button>
+          {/* Seul l'hôte devrait voir ce bouton le premier est l hote qui a créé partie */}
+          {playerId === players[0] && (
+            <button
+              className='btn-neon'
+              onClick={handleStartGame}
+              disabled={status === "playing"}
+            >
+              Générer le quiz avec l'IA
+            </button>
+          )}
         </>
       )}
     </div>

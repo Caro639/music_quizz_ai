@@ -17,12 +17,7 @@ class Player
     private ?string $nickname = null;
 
     #[ORM\Column]
-    private ?int $score;
-
-    public function __construct()
-    {
-        $this->score = 0; // Initialiser le score à 0
-    }
+    private ?int $score = 0;
 
     #[ORM\ManyToOne(inversedBy: 'players')]
     private ?Game $game = null;
