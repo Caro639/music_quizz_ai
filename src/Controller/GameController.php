@@ -62,8 +62,11 @@ final class GameController extends AbstractController
         $update = new Update(
             "https://quiz-ia.com/game/{$game->getId()}",
             json_encode([
-                'action' => 'player_joined',
-                'nickname' => $player->getNickname()
+                'type' => 'player_joined',
+                'player' => [
+                    'id' => $player->getId(),
+                    'nickname' => $player->getNickname(),
+                ]
             ])
         );
         $hub->publish($update);
@@ -73,7 +76,7 @@ final class GameController extends AbstractController
     }
 
     #[Route('/game/create', name: 'app_game_create')]
-    public function create(Request $request, EntityManagerInterface $manager): Response
+    public function create(Request $request, EntityManagerInterface $manager, HubInterface $hub): Response
     {
 
         $game = new Game();
@@ -99,6 +102,22 @@ final class GameController extends AbstractController
 
         $request->getSession()->set('player_id', $player->getId());
 
+        $request->getSession()->set('host_game_id', (string) $game->getId());
+
+        $update = new Update(
+            "https://quiz-ia.com/game/{$game->getId()}",
+            json_encode([
+                'type' => 'player_updated',
+                'player' => [
+                    'id' => $player->getId(),
+                    'nickname' => $player->getNickname(),
+                ]
+            ])
+        );
+        $hub->publish($update);
+
+        $manager->flush();
+
 
         return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
     }
@@ -111,12 +130,21 @@ final class GameController extends AbstractController
         $isHost = $request->getSession()->get('host_game_id') === (string) $game->getId();
 
         $playerId = $request->getSession()->get('player_id');
+        $players = [];
+
+        foreach ($game->getPlayers() as $player) {
+            $players[] = [
+                'id' => $player->getId(),
+                'nickname' => $player->getNickname(),
+            ];
+        }
 
         return $this->render('game/show.html.twig', [
             'game' => $game,
             // 'playerHost' => ($playerId === null), // S'il n'a pas d'ID joueur en session, c'est l'hôte sur son PC !
             'isHost' => $isHost,
             'playerId' => $playerId,
+            'players' => $players,
             'mercureUrl' => $topicUrl,
             'mercureHubUrl' => getenv('MERCURE_PUBLIC_URL') ?: 'https://localhost:3000/.well-known/mercure',
         ]);

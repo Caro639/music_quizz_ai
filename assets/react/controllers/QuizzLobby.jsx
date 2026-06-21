@@ -12,6 +12,7 @@ export default function QuizzLobby({
   initialStatus = "waiting",
   initialPlaylist = [],
   playerId,
+  players: initialPlayers,
 }) {
   const [isLoading, setIsLoading] = useState(false);
   //   const [status, setStatus] = useState(initialStatus);
@@ -22,8 +23,8 @@ export default function QuizzLobby({
   const [playlist, setPlaylist] = useState(initialPlaylist);
   const [currentSongIndex, setCurrentSongIndex] = useState(initialSongIndex);
   const [scores, setScores] = useState(initialScores); // { "PlayerName": 5, ... }
-  //   const [players, setPlayers] = useState([]); // { "PlayerName": true, ... }
-  const [players, setPlayers] = useState(playerId ? [playerId] : []); // Liste des pseudos des joueurs
+  const [players, setPlayers] = useState(initialPlayers ?? []); // { "PlayerName": true, ... }
+  //   const [players, setPlayers] = useState(playerId ? [playerId] : []); // Liste des pseudos des joueurs
 
   const [timeLeft, setTimeLeft] = useState(30);
 
@@ -35,6 +36,7 @@ export default function QuizzLobby({
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       console.log("Annonce reçue de Symfony :", data);
+      console.log("isHost:", isHost);
 
       // Le jeu démarre : tous les joueurs reçoivent la playlist
       if (data.status === "playing") {
@@ -56,7 +58,12 @@ export default function QuizzLobby({
 
       // Symfony met à jour la liste des joueurs
       if (data.type === "player_update") {
-        setPlayers((prev) => [...prev, data.nickname]);
+        setPlayers((prev) => [...prev, data.player]);
+      }
+
+      //afficher les joueurs qui ont rejoint la partie
+      if (data.type === "player_joined") {
+        setPlayers((prev) => [...prev, data.player]);
       }
 
       // Fin de partie
@@ -137,6 +144,7 @@ export default function QuizzLobby({
         scores={scores}
         timeLeft={timeLeft}
         playerId={playerId}
+        players={players}
       />
     );
   }
@@ -173,7 +181,7 @@ export default function QuizzLobby({
           <div className='players-grid'>
             {players.map((player, index) => (
               <span key={index} className='player-badge animate-pop'>
-                👤 {player}
+                👤 {player.nickname}
               </span>
             ))}
           </div>
@@ -189,7 +197,8 @@ export default function QuizzLobby({
         <>
           <p className='mb-6'>Prêt à tester ta culture musicale ?</p>
           {/* Seul l'hôte devrait voir ce bouton le premier est l hote qui a créé partie */}
-          {playerId === players[0] && (
+
+          {isHost && (
             <button
               className='btn-neon'
               onClick={handleStartGame}
