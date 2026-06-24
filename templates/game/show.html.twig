@@ -16,6 +16,7 @@
     'currentPlayerId': app.session.get('player_id'),
     'playerId': game.players|map(p => p.id)|join(','),
     'mercureHubUrl': mercureHubUrl,
+    'initialPlayers': game.players|map(p => {id: p.id, nickname: p.nickname, score: p.score})
      }) }}>
         Chargement du jeu...
     </div>

@@ -12,7 +12,7 @@ export default function QuizzLobby({
   initialStatus = "waiting",
   initialPlaylist = [],
   playerId,
-  players: initialPlayers,
+  initialPlayers,
 }) {
   const [isLoading, setIsLoading] = useState(false);
   //   const [status, setStatus] = useState(initialStatus);
@@ -23,7 +23,8 @@ export default function QuizzLobby({
   const [playlist, setPlaylist] = useState(initialPlaylist);
   const [currentSongIndex, setCurrentSongIndex] = useState(initialSongIndex);
   const [scores, setScores] = useState(initialScores); // { "PlayerName": 5, ... }
-  const [players, setPlayers] = useState(initialPlayers ?? []); // { "PlayerName": true, ... }
+  //   const [players, setPlayers] = useState(initialPlayers ?? []);
+  const [players, setPlayers] = useState(initialPlayers || []);
   //   const [players, setPlayers] = useState(playerId ? [playerId] : []); // Liste des pseudos des joueurs
 
   const [timeLeft, setTimeLeft] = useState(30);
@@ -37,6 +38,11 @@ export default function QuizzLobby({
       const data = JSON.parse(event.data);
       console.log("Annonce reçue de Symfony :", data);
       console.log("isHost:", isHost);
+
+      // un nouveau joueur arrive on reçoit le tableau complet mis à jour par le serveur
+      if (data.type === "sync_players") {
+        setPlayers(data.players);
+      }
 
       // Le jeu démarre : tous les joueurs reçoivent la playlist
       if (data.status === "playing") {
@@ -185,6 +191,14 @@ export default function QuizzLobby({
               </span>
             ))}
           </div>
+        )}
+        {isHost && (
+          <p className='text-sm text-gray-400 mt-2'>
+            <span key={playerId}>
+              Vous êtes l'hôte. Partagez le code du salon pour inviter d'autres
+              joueurs.
+            </span>
+          </p>
         )}
       </div>
 

@@ -100,7 +100,7 @@ final class GameController extends AbstractController
 
         $manager->flush();
 
-        $request->getSession()->set('player_id', $player->getId());
+        // $request->getSession()->set('player_id', $player->getId());
 
         $request->getSession()->set('host_game_id', (string) $game->getId());
 
@@ -123,21 +123,32 @@ final class GameController extends AbstractController
     }
 
     #[Route('/game/{id}', name: 'app_game_show')]
-    public function show(Game $game, Request $request): Response
+    public function show(Game $game, Request $request, HubInterface $hub): Response
     {
         $topicUrl = "https://quiz-ia.com/game/{$game->getId()}";
 
         $isHost = $request->getSession()->get('host_game_id') === (string) $game->getId();
 
         $playerId = $request->getSession()->get('player_id');
+
         $players = [];
 
         foreach ($game->getPlayers() as $player) {
             $players[] = [
                 'id' => $player->getId(),
                 'nickname' => $player->getNickname(),
+                'score' => $player->getScore(),
             ];
         }
+
+        $update = new Update(
+            $topicUrl,
+            json_encode([
+                'type' => 'player_updated',
+                'players' => $players
+            ])
+        );
+        $hub->publish($update);
 
         return $this->render('game/show.html.twig', [
             'game' => $game,
@@ -264,9 +275,9 @@ final class GameController extends AbstractController
         foreach ($game->getPlayers() as $p) {
             $scores[$p->getNickname()] = $p->getScore();
         }
+
         $topic = "https://quiz-ia.com/game/{$game->getId()}";
 
-        // Broadcast score_update sans changer de chanson
         $hub->publish(new Update($topic, json_encode([
             'type' => 'score_update',
             'scores' => $scores,
