@@ -216,26 +216,28 @@ body {
 }
 
 .text-neon-magenta {
-  color: #ff007f;
-  text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+  color: #ad45c6;
+  text-shadow: 0 0 10px rgba(173, 69, 198, 0.5);
 }
 .btn-neon-magenta {
   display: inline-block;
   text-decoration: none;
   background: transparent;
-  border: 2px solid #ff007f;
-  color: #ff007f;
+  border: 2px solid #ad45c6;
+  color: #ad45c6;
   padding: 12px 24px;
   font-weight: bold;
   border-radius: 5px;
-  box-shadow: 0 0 10px rgba(255, 0, 127, 0.2);
+  box-shadow: 0 0 10px rgba(173, 69, 198, 0.2);
   transition: all 0.3s;
   margin-top: 20px;
+  cursor: pointer;
+  width: 100%;
 }
 .btn-neon-magenta:hover {
-  background: #ff007f;
+  background: #ad45c6;
   color: #000;
-  box-shadow: 0 0 20px #ff007f;
+  box-shadow: 0 0 20px #ad45c6;
 }
 
 .input-group {
@@ -254,4 +256,12 @@ body {
   border: 1px solid #444;
   color: white;
   border-radius: 5px;
+}
+
+.lobbies-container {
+  justify-content: center;
+}
+
+.lobby-select-btn:hover {
+  box-shadow: 0 0 20px #00d2ff;
 }

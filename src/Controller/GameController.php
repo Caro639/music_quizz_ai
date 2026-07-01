@@ -22,15 +22,50 @@ final class GameController extends AbstractController
 {
 
     #[Route('/', name: 'app_home')]
+    /**
+     * Summary of home
+     * @param GameRepository $repository
+     * @return Response
+     */
     public function home(GameRepository $repository): Response
     {
 
+        $waitingGames = $repository->findWaitingGames();
+
+        $tokenList = [];
+        foreach ($waitingGames as $game) {
+            $hostPlayer = $game->getPlayers()->first();
+            $tokenList[] = [
+                'id' => $game->getId(),
+                'token' => $game->getToken(),
+                'status' => $game->getStatus(),
+                'playersCount' => count($game->getPlayers()),
+                'host' => $hostPlayer ? $hostPlayer->getNickname() : 'Inconnu',
+            ];
+        }
+
+        $topicUrl = "https://quiz-ia.com/lobbies";
+
+        // creation de l'URL pour accueillir les mises à jour du hub Mercure des nouvelles sessions de jeu
+        $mercureHubPublicUrl = $_ENV['MERCURE_PUBLIC_URL'] ?? 'https://localhost:3000/.well-known/mercure';
+        $mercureSubscriptionUrl = $mercureHubPublicUrl . '?topic=' . urlencode($topicUrl);
+
+
         return $this->render('game/index.html.twig', [
-            'waitingGames' => $repository->findWaitingGames(),
+            'waitingGames' => $tokenList,
+            'mercureUrl' => $mercureSubscriptionUrl,
         ]);
     }
 
     #[Route('/game/join', name: 'app_game_join', methods: ['POST'])]
+    /**
+     * Summary of join new player session
+     * @param Request $request
+     * @param GameRepository $repository
+     * @param EntityManagerInterface $manager
+     * @param HubInterface $hub
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     */
     public function join(Request $request, GameRepository $repository, EntityManagerInterface $manager, HubInterface $hub): Response
     {
         $token = strtoupper(trim($request->request->get('token', '')));
@@ -46,7 +81,6 @@ final class GameController extends AbstractController
             return $this->redirectToRoute('app_home');
         }
 
-        // On crée le joueur
         $nickname = trim($request->request->get('nickname', 'Joueur'));
         $player = new Player();
         $player->setNickname($nickname);
@@ -56,7 +90,7 @@ final class GameController extends AbstractController
         $manager->persist($player);
         $manager->flush();
 
-        // IMPORTANT : On stocke l'ID du joueur en session
+        // stocke ID du joueur en session
         $request->getSession()->set('player_id', $player->getId());
 
         $update = new Update(
@@ -70,18 +104,27 @@ final class GameController extends AbstractController
             ])
         );
         $hub->publish($update);
-        // On le redirige vers la page du salon de cette partie
+
         return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
 
     }
 
     #[Route('/game/create', name: 'app_game_create')]
+    /**
+     * Summary of create game
+     * @param Request $request
+     * @param EntityManagerInterface $manager
+     * @param HubInterface $hub
+     * @return \Symfony\Component\HttpFoundation\RedirectResponse
+     */
     public function create(Request $request, EntityManagerInterface $manager, HubInterface $hub): Response
     {
+        // get pseudo
+        $nickname = $request->request->get('nickname') ?: 'Hôte';
 
         $game = new Game();
 
-        // On génère un token court de 6 caractères pour le partage
+        // create token court de 6 caractères pour le partage
         $token = bin2hex(random_bytes(3));
 
         $game->setToken(strtoupper($token));
@@ -91,9 +134,9 @@ final class GameController extends AbstractController
 
         $manager->persist($game);
 
-        // 2. Création du joueur Hôte
+        // création du joueur hôte
         $player = new Player();
-        $player->setNickname($player->getNickname() ?: 'Hôte');
+        $player->setNickname($nickname);
         $player->setGame($game);
         $player->setScore(0);
         $manager->persist($player);
@@ -111,18 +154,35 @@ final class GameController extends AbstractController
                 'player' => [
                     'id' => $player->getId(),
                     'nickname' => $player->getNickname(),
-                ]
+                ],
             ])
         );
         $hub->publish($update);
 
-        $manager->flush();
-
+        $updateLobbies = new Update(
+            "https://quiz-ia.com/lobbies",
+            json_encode([
+                'action' => 'lobby_created',
+                'id' => $game->getId(),
+                'token' => $game->getToken(),
+                'status' => $game->getStatus(),
+                'playersCount' => 1,
+                'host' => $player->getNickname()
+            ])
+        );
+        $hub->publish($updateLobbies);
 
         return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
     }
 
     #[Route('/game/{id}', name: 'app_game_show')]
+    /**
+     * Summary of show game playlist
+     * @param Game $game
+     * @param Request $request
+     * @param HubInterface $hub
+     * @return Response
+     */
     public function show(Game $game, Request $request, HubInterface $hub): Response
     {
         $topicUrl = "https://quiz-ia.com/game/{$game->getId()}";
@@ -152,7 +212,6 @@ final class GameController extends AbstractController
 
         return $this->render('game/show.html.twig', [
             'game' => $game,
-            // 'playerHost' => ($playerId === null), // S'il n'a pas d'ID joueur en session, c'est l'hôte sur son PC !
             'isHost' => $isHost,
             'playerId' => $playerId,
             'players' => $players,
@@ -162,6 +221,15 @@ final class GameController extends AbstractController
     }
 
     #[Route('/api/game/{id}/start', name: 'api_game_start', methods: ['POST'])]
+    /**
+     * Summary of start game api mistral deezer
+     * @param Game $game
+     * @param MistralAiService $ai
+     * @param EntityManagerInterface $manager
+     * @param HubInterface $hub
+     * @param DeezerService $deezer
+     * @return JsonResponse
+     */
     public function start(
         Game $game,
         MistralAiService $ai,
@@ -179,7 +247,7 @@ final class GameController extends AbstractController
             $finalPlaylist[] = [
                 'title' => $track['title'],
                 'artist' => $track['artist'],
-                'preview_url' => $previewUrl // On ajoute le MP3 !
+                'preview_url' => $previewUrl // = mp3 preview URL from Deezer API
             ];
         }
 
@@ -189,10 +257,8 @@ final class GameController extends AbstractController
 
         $manager->flush();
 
-        // --- LE PUSH MERCURE ---
-        // On crée une mise à jour liée à l'ID de cette partie
         $update = new Update(
-            "https://quiz-ia.com/game/{$game->getId()}", // Le "Topic" (l'ID unique)
+            "https://quiz-ia.com/game/{$game->getId()}",
             json_encode([
                 'status' => 'playing',
                 'playlist' => $finalPlaylist,
@@ -211,6 +277,16 @@ final class GameController extends AbstractController
 
 
     #[Route('/api/game/{id}/guess', name: 'api_game_guess', methods: ['POST'])]
+    /**
+     * Summary of validateAnswer game api mistral
+     * @param Game $game
+     * @param Request $request
+     * @param MistralAiService $ai
+     * @param EntityManagerInterface $em
+     * @param HubInterface $hub
+     * @param LoggerInterface $logger
+     * @return JsonResponse
+     */
     public function validateAnswer(
         Game $game,
         Request $request,
@@ -252,14 +328,14 @@ final class GameController extends AbstractController
 
         $song = $songs[$songIndex];
 
-        // 1. Validation via Mistral
+        // validation via Mistral
         $isCorrect = $ai->validateAnswer($answer, $song['title'], $song['artist']);
 
         $logger->info('Validation result', ['isCorrect' => $isCorrect, 'playerId' => $playerId, 'gameId' => $game->getId(), 'songIndex' => $songIndex]);
 
         if ($isCorrect) {
 
-            // On augmente le score du joueur de 10 points
+            // augmente le score du joueur de 10 points
             $player->setScore($player->getScore() + 10);
 
             $logger->info('Score updated', ['player' => $player->getNickname(), 'nouveau_score' => $player->getScore()]);

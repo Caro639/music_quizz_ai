@@ -1,95 +1,78 @@
+{# templates/game/index.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Accueil - Blind Test IA
-{% endblock %}
+{% block title %}Accueil - Blind Test IA{% endblock %}
 
 {% block body %}
-	<div class="home-container">
-		<h1 class="main-title text-neon">🎵 BLIND TEST IA</h1>
+    <div class="home-container">
+        <h1 class="main-title text-neon">🎵 BLIND TEST IA</h1>
 
-		{# Affichage des erreurs si le code du salon est faux #}
-		{% for message in app.flashes('error') %}
-			<div class="alert-error animate-pop">
-				{{ message }}
-			</div>
-		{% endfor %}
+        {# Affichage des erreurs si le code du salon est faux #}
+        {% for message in app.flashes('error') %}
+            <div class="alert-error animate-pop">
+                {{ message }}
+            </div>
+        {% endfor %}
 
-		<div
-			class="home-grid">
-			<!-- BLOC 1 : CRÉER (Pour l'hôte sur PC) -->
-			<div class="glass-card create-box">
-				<h2 class="text-neon-magenta">Créer une partie</h2>
-				<p>Tu veux être le maître du jeu ? Crée un salon et affiche-le sur grand écran pour tes amis !</p>
+        <div class="home-grid">
+        {# créer une partie en tant qu'hôte #}
+            <div class="glass-card create-box">
+                <h2 class="text-neon-magenta">Créer une partie</h2>
+                <p>Tu veux être le maître du jeu ? Crée un salon et affiche-le sur grand écran pour tes amis !</p>
 
-				<form method="POST" action="{{ path('app_game_create') }}">
-					<div class="input-group">
-						<label for="host_nickname">Ton Pseudo d'Hôte</label>
-						<input type="text" id="host_nickname" name="nickname" placeholder="Ex: ChefDuGame" required autocomplete="off">
-					</div>
-				</form>
-
-				{# On redirige vers ton ancienne méthode qui génère le jeu #}
-				<a href="{{ path('app_game_create') }}" class="btn-neon-magenta">
-					Créer un Salon 🎮
-				</a>
-			</div>
-
-             {# --- Salons ouverts --- #}
-    {% if waitingGames is not empty %}
-    <div class="glass-card mb-6">
-        <h2 class="text-xl font-bold mb-4">🟢 Salons ouverts</h2>
-        <p class="text-gray-400 text-sm mb-4">Clique sur un salon pour le rejoindre directement.</p>
-
-        <ul class="space-y-2">
-            {% for game in waitingGames %}
-            <li>
-                <form action="{{ path('app_game_join') }}" method="POST">
-                    <input type="hidden" name="token" value="{{ game.token }}" />
-                    <button type="submit" class="w-full flex items-center justify-between px-4 py-3 border border-gray-600 rounded-lg hover:border-purple-400 hover:bg-gray-800 transition-colors">
-                        <span class="text-2xl font-bold tracking-widest text-neon">{{ game.token }}</span>
-                             <div class="input-group">
-						<label for="nickname">Ton Pseudo</label>
-						<input type="text" id="nickname" name="nickname" placeholder="Pseudo" required autocomplete="off">
-					</div>
-                        <span class="text-sm text-gray-400">Rejoindre →</span>
+                <form method="POST" action="{{ path('app_game_create') }}">
+                    <div class="input-group">
+                        <label for="host_nickname">Ton Pseudo d'Hôte</label>
+                        <input type="text" id="host_nickname" name="nickname" placeholder="Ex: ChefDuGame" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn-neon-magenta">
+                        Créer un Salon 🎮
                     </button>
                 </form>
-            </li>
-            {% endfor %}
-        </ul>
+            </div>
+
+        {# rejoindre une session en tant que joueur #}
+            <div class="glass-card join-box">
+                <h2 class="text-neon-cyan">Rejoindre une partie</h2>
+                <p class="text-gray-400 text-sm mb-4">
+                    Entre le code ou clique sur un salon disponible en temps réel ci-dessous.
+                </p>
+
+                {# --- ZONE DES SALONS EN TEMPS RÉEL (Contenue dans le bloc Rejoindre) --- #}
+                <div style="margin-bottom: 25px;"
+                {{ react_component('LiveLobbiesList', {
+                    'waitingGames': waitingGames,
+                    'mercureUrl': mercureUrl,
+                }) }}>
+                Chargements des salons...
+                </div>
+
+                {# --- FORMULAIRE DE CONNEXION UNIQUE AVEC CODE DU SALON --- #}
+                <form action="{{ path('app_game_join') }}" method="POST">
+                    <div class="input-group">
+                        <label for="token-input">Code du salon</label>
+                        <input
+                            type="text"
+                            name="token"
+                            id="token-input"
+                            maxlength="6"
+                            placeholder="Ex : A3F2B7"
+                            class="uppercase tracking-widest text-center"
+                            autocomplete="off"
+                            required
+                        />
+                    </div>
+
+                    <div class="input-group">
+                        <label for="nickname">Ton Pseudo</label>
+                        <input type="text" id="nickname" name="nickname" placeholder="Pseudo" required autocomplete="off">
+                    </div>
+
+                    <button type="submit" class="btn-neon-cyan" style="width: 100%; margin-top: 10px;">
+                        Entrer dans le salon 🚀
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
-    {% endif %}
-
-            <!-- BLOC 2 : REJOINDRE (Pour les téléphones) -->
-             {# --- Rejoindre une partie par code --- #}
-			<div class="glass-card join-box">
-				<h2 class="text-neon-cyan">Rejoindre une partie</h2>
-				 <p class="text-gray-400 text-sm mb-4">
-            Entre le code à 6 lettres donné par l'hôte.
-        </p>
-        <form action="{{ path('app_game_join') }}" method="POST" class="flex gap-2">
-            <input
-                type="text"
-                name="token"
-                id="token-input"
-                maxlength="6"
-                placeholder="Ex : A3F2B7"
-                class="flex-1 border border-gray-600 bg-gray-800 text-white rounded p-2 uppercase tracking-widest text-center text-lg focus:outline-none focus:border-purple-400"
-                autocomplete="off"
-                required
-            />
-            {# <button type="submit" class="btn-neon">Rejoindre</button>
-        </form> #}
-
-					<div class="input-group">
-						<label for="nickname">Ton Pseudo</label>
-						<input type="text" id="nickname" name="nickname" placeholder="Pseudo" required autocomplete="off">
-					</div>
-
-					<button type="submit" class="btn-neon-cyan">Entrer dans le salon 🚀</button>
-				</form>
-			</div>
-
-		</div>
-	</div>
 {% endblock %}
