@@ -46,7 +46,18 @@ export default function LiveLobbiesList({
 
         // envoi de la data de tokenList
         if (data.action === "lobby_created") {
-          setLobbies((prevLobbies) => [...prevLobbies, data]);
+          setLobbies((prevLobbies) => [data, ...prevLobbies]);
+        }
+
+        // un joueur a rejoint un salon existant : on met à jour son compteur
+        if (data.action === "lobby_updated") {
+          setLobbies((prevLobbies) =>
+            prevLobbies.map((lobby) =>
+              lobby.id === data.id
+                ? { ...lobby, playersCount: data.playersCount }
+                : lobby,
+            ),
+          );
         }
       };
 

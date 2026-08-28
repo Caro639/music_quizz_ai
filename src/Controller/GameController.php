@@ -105,6 +105,18 @@ final class GameController extends AbstractController
         );
         $hub->publish($update);
 
+        // synchronise le compteur de joueurs sur la page d'accueil des sessions
+        $updateLobby = new Update(
+            "https://quiz-ia.com/lobbies",
+            json_encode([
+                'action' => 'lobby_updated',
+                'id' => $game->getId(),
+                'token' => $game->getToken(),
+                'playersCount' => count($game->getPlayers()),
+            ])
+        );
+        $hub->publish($updateLobby);
+
         return $this->redirectToRoute('app_game_show', ['id' => $game->getId()]);
 
     }
@@ -129,7 +141,7 @@ final class GameController extends AbstractController
 
         $game->setToken(strtoupper($token));
         $game->setStatus('waiting');
-        // $game->setScores([]);
+        $game->setScores([]);
         $game->setAnswers([]);
 
         $manager->persist($game);
@@ -143,7 +155,7 @@ final class GameController extends AbstractController
 
         $manager->flush();
 
-        // $request->getSession()->set('player_id', $player->getId());
+        $request->getSession()->set('player_id', $player->getId());
 
         $request->getSession()->set('host_game_id', (string) $game->getId());
 
