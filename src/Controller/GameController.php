@@ -250,17 +250,35 @@ final class GameController extends AbstractController
         DeezerService $deezer,
     ): JsonResponse {
 
-        $playlist = $ai->generateQuiz('Années 90 Françaises');
-
+        // on ne garde que les titres trouvés sur Deezer, en redemandant à l'IA jusqu'à obtenir 5 morceaux jouables
+        $targetCount = 5;
+        $maxAttempts = 4;
         $finalPlaylist = [];
-        foreach ($playlist as $track) {
-            $previewUrl = $deezer->getPreviewUrl($track['title'], $track['artist']);
+        $rejectedTitles = [];
 
-            $finalPlaylist[] = [
-                'title' => $track['title'],
-                'artist' => $track['artist'],
-                'preview_url' => $previewUrl // = mp3 preview URL from Deezer API
-            ];
+        for ($attempt = 0; $attempt < $maxAttempts && count($finalPlaylist) < $targetCount; $attempt++) {
+            $missing = $targetCount - count($finalPlaylist);
+            $candidates = $ai->generateQuiz('Années 90 Françaises', $missing + 2, $rejectedTitles);
+
+            foreach ($candidates as $track) {
+                if (count($finalPlaylist) >= $targetCount) {
+                    break;
+                }
+
+                $rejectedTitles[] = "{$track['title']} - {$track['artist']}";
+
+                $previewUrl = $deezer->getPreviewUrl($track['title'], $track['artist']);
+                if (!$previewUrl) {
+                    // introuvable sur Deezer : on l'écarte pour ne pas se retrouver sans son en jeu
+                    continue;
+                }
+
+                $finalPlaylist[] = [
+                    'title' => $track['title'],
+                    'artist' => $track['artist'],
+                    'preview_url' => $previewUrl,
+                ];
+            }
         }
 
         $game->setStatus('playing');

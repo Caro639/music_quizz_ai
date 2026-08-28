@@ -14,11 +14,27 @@ class DeezerService
 
     public function getPreviewUrl(string $title, string $artist): ?string
     {
-        try {
-            // On encode la recherche pour l'URL (ex: "daniel balavoine l aziza")
-            $query = urlencode($artist . ' ' . $title);
+        // plusieurs formulations pour maximiser les chances de trouver le titre sur Deezer
+        $queries = [
+            $artist . ' ' . $title,
+            $title . ' ' . $artist,
+            $title,
+        ];
 
-            $response = $this->httpClient->request('GET', "https://api.deezer.com/search?q={$query}");
+        foreach ($queries as $query) {
+            $preview = $this->search($query);
+            if ($preview) {
+                return $preview;
+            }
+        }
+
+        return null;
+    }
+
+    private function search(string $query): ?string
+    {
+        try {
+            $response = $this->httpClient->request('GET', 'https://api.deezer.com/search?q=' . urlencode($query));
             $data = $response->toArray();
 
             // Si Deezer trouve des résultats, on prend le premier et on retourne le preview MP3

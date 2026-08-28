@@ -15,8 +15,12 @@ class MistralAiService
         $this->apiKey = $mistralApiKey;
     }
 
-    public function generateQuiz(string $theme): array
+    public function generateQuiz(string $theme, int $count = 5, array $exclude = []): array
     {
+        $excludeText = empty($exclude)
+            ? ''
+            : " Ne propose aucune des chansons suivantes, déjà utilisées : " . implode(', ', $exclude) . '.';
+
         $response = $this->httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions', [
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
@@ -31,7 +35,8 @@ class MistralAiService
                     ],
                     [
                         'role' => 'user',
-                        'content' => "Génère 5 chansons pour un quiz sur le thème '$theme'.
+                        'content' => "Génère $count chansons connues et populaires pour un quiz sur le thème '$theme',
+                        pour être sûr de les retrouver facilement sur Deezer.$excludeText
                         Format: {\"songs\": [{\"title\": \"...\", \"artist\": \"...\"}]}"
                     ]
                 ],
@@ -57,23 +62,27 @@ class MistralAiService
                 'messages' => [
                     [
                         'role' => 'system',
-                        'content' => 'Tu es un validateur de quiz musical. Réponds UNIQUEMENT par OUI ou NON, sans ponctuation ni explication.',
+                        'content' => 'Tu es un validateur de quiz musical. Réponds uniquement en JSON.',
                     ],
                     [
                         'role' => 'user',
                         'content' => "La chanson est \"$title\" de \"$artist\". Le joueur a répondu \"$answer\".
                         Est-ce que sa réponse montre qu'il a trouvé le titre OU l'artiste ?
                         Sois indulgent avec l'orthographe et les fautes de frappe,
-                        mais ne considère pas les réponses qui ne sont pas proches du titre ou de l'artiste comme correctes.",
+                        mais ne considère pas les réponses qui ne sont pas proches du titre ou de l'artiste comme correctes.
+                        Réponds strictement au format JSON : {\"correct\": true} ou {\"correct\": false}.",
                     ],
                 ],
+                'response_format' => ['type' => 'json_object'],
             ],
         ]);
 
         $data = $response->toArray();
-        $content = $data['choices'][0]['message']['content'] ?? '';
+        $content = $data['choices'][0]['message']['content'] ?? '{}';
 
-        return str_contains(strtoupper($content), 'OUI');
+        // parsing JSON strict au lieu d'une recherche de sous-chaîne "OUI" (fausse positive sur ex. "éblOUIssant")
+        return (bool) (json_decode($content, true)['correct'] ?? false);
     }
+
 
 }

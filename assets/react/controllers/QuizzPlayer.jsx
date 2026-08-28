@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 /**
  * QuizzPlayer — écran de jeu pour UNE chanson
@@ -36,8 +36,12 @@ export default function QuizzPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  // garde la valeur à jour de currentSongIndex pour les callbacks async (fetch)
+  const currentSongIndexRef = useRef(currentSongIndex);
+
   // Réinitialiser la saisie à chaque nouvelle chanson
   useEffect(() => {
+    currentSongIndexRef.current = currentSongIndex;
     setGuess("");
     setAnswered(false);
     setResult(null);
@@ -62,6 +66,8 @@ export default function QuizzPlayer({
     e.preventDefault();
     if (answered || !guess.trim()) return;
 
+    const songIndexAtSubmit = currentSongIndex;
+
     setIsSubmitting(true);
     try {
       // --- ÉTAPE 2 : cette route Symfony n'existe pas encore ---
@@ -72,7 +78,7 @@ export default function QuizzPlayer({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          songIndex: currentSongIndex,
+          songIndex: songIndexAtSubmit,
           answer: guess.trim(),
           //   playerName,
           playerId,
@@ -81,8 +87,11 @@ export default function QuizzPlayer({
 
       if (response.ok) {
         const data = await response.json();
-        setResult(data.isCorrect ? "correct" : "incorrect");
-        setAnswered(true);
+        // réponse arrivée trop tard : la chanson suivante a déjà démarré, on l'ignore
+        if (currentSongIndexRef.current === songIndexAtSubmit) {
+          setResult(data.isCorrect ? "correct" : "incorrect");
+          setAnswered(true);
+        }
       }
     } catch (error) {
       console.error("Erreur lors de l'envoi de la réponse :", error);
