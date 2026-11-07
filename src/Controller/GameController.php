@@ -17,6 +17,7 @@ use Symfony\Component\Mercure\Update;
 use Symfony\Component\Routing\Attribute\Route;
 
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 
 final class GameController extends AbstractController
 {
@@ -258,7 +259,20 @@ final class GameController extends AbstractController
 
         for ($attempt = 0; $attempt < $maxAttempts && count($finalPlaylist) < $targetCount; $attempt++) {
             $missing = $targetCount - count($finalPlaylist);
-            $candidates = $ai->generateQuiz('Années 90 Françaises', $missing + 2, $rejectedTitles);
+            try {
+                $candidates = $ai->generateQuiz('Années 90 Françaises', $missing + 2, $rejectedTitles);
+            } catch (HttpExceptionInterface $e) {
+                if ($finalPlaylist) {
+                    break;
+                }
+                $busy = $e->getResponse()->getStatusCode() === 429;
+                return $this->json([
+                    'status' => 'error',
+                    'error' => $busy
+                        ? 'L\'API Mistral est surchargée (limite de requêtes atteinte). Réessayez dans une minute.'
+                        : 'Impossible de générer le quiz avec l\'IA.',
+                ], $busy ? 429 : 502);
+            }
 
             foreach ($candidates as $track) {
                 if (count($finalPlaylist) >= $targetCount) {
@@ -279,6 +293,10 @@ final class GameController extends AbstractController
                     'preview_url' => $previewUrl,
                 ];
             }
+        }
+
+        if (!$finalPlaylist) {
+            return $this->json(['status' => 'error', 'error' => 'Aucun morceau jouable trouvé, réessayez.'], 502);
         }
 
         $game->setStatus('playing');

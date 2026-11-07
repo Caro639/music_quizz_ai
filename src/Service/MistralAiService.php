@@ -21,7 +21,7 @@ class MistralAiService
             ? ''
             : " Ne propose aucune des chansons suivantes, déjà utilisées : " . implode(', ', $exclude) . '.';
 
-        $response = $this->httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions', [
+        $data = $this->requestWithRetry([
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
@@ -44,15 +44,31 @@ class MistralAiService
             ],
         ]);
 
-        $data = $response->toArray();
         $content = $data['choices'][0]['message']['content'];
 
         return json_decode($content, true)['songs'] ?? [];
     }
 
+    /**
+     * Appelle Mistral en réessayant après une pause si l'API répond 429 (limite de débit).
+     */
+    private function requestWithRetry(array $options, int $maxRetries = 3): array
+    {
+        for ($try = 0; ; $try++) {
+            $response = $this->httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions', $options);
+
+            if ($response->getStatusCode() !== 429 || $try >= $maxRetries) {
+                return $response->toArray();
+            }
+
+            $retryAfter = (int) ($response->getHeaders(false)['retry-after'][0] ?? 0);
+            sleep(max(1, min($retryAfter ?: 2 ** ($try + 1), 10)));
+        }
+    }
+
     public function validateAnswer(string $answer, string $title, string $artist): bool
     {
-        $response = $this->httpClient->request('POST', 'https://api.mistral.ai/v1/chat/completions', [
+        $data = $this->requestWithRetry([
             'headers' => [
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
@@ -77,7 +93,6 @@ class MistralAiService
             ],
         ]);
 
-        $data = $response->toArray();
         $content = $data['choices'][0]['message']['content'] ?? '{}';
 
         // parsing JSON strict au lieu d'une recherche de sous-chaîne "OUI" (fausse positive sur ex. "éblOUIssant")

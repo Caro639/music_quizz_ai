@@ -132,6 +132,9 @@ export default function QuizzLobby({
         setCurrentSongIndex(0);
         setStatus("playing");
         setTimeLeft(30);
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert(err.error || "Erreur lors de la génération du quiz.");
       }
     } catch (error) {
       console.error("Erreur lors de l'appel à Mistral :", error);
